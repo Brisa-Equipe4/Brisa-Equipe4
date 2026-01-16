@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Serviços | Painel de Demanda</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../style.css">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet"/>
+    
+    <style>
+        /* Ajuste fino para garantir que os Selects tenham a mesma altura base */
+        .select2-container .select2-selection--single {
+            height: 38px !important;
+            display: flex !important;
+            align-items: center !important;
+        }
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            line-height: normal !important;
+        }
+        
+        /* Ajuste do botão para alinhar ícone e texto e ter a mesma altura do select */
+        .btn-pdf {
+            height: 38px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px; /* Espaço entre ícone e texto */
+            padding: 0 15px;
+            width: 100%;
+            cursor: pointer;
+            /* Mantendo estilos visuais que provavelmente estão no seu style.css, mas garantindo alinhamento aqui */
+        }
+    </style>
+</head>
+<body>
+<div class="layout">
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-title"><i class="fas fa-chart-pie"></i> DASHBOARD</span>
+            <button class="toggle-btn" onclick="toggleSidebar()">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+        <nav class="nav-menu">
+            <a href="../section_previsao/previsao.html" class="nav-link">
+                <i class="fas fa-bolt"></i><span>Previsão Futura</span>
+            </a>
+            <a href="../section_metricas/metricas.html" class="nav-link">
+                <i class="fas fa-percent"></i><span>Métricas</span>
+            </a>
+            <a href="../section_retreino/retreino.html" class="nav-link">
+                <i class="fas fa-sync-alt"></i><span>Retreinamento</span>
+            </a>
+            <a href="../section_servicos/servicos.html" class="nav-link active">
+                <i class="fas fa-users"></i><span>Serviços</span>
+            </a>
+        </nav>
+    </aside>
+    <main class="content">
+        <header>
+            <h1>Análise de Serviços</h1>
+            <p>Monitoramento detalhado de demanda mensal, semanal e diária.</p>
+        </header>
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <span>Total de Atendimentos</span>
+                <h2 id="kpiTotal">0</h2>
+            </div>
+            <div class="kpi-card">
+                <span>Média Mensal</span>
+                <h2 id="kpiMedia">0</h2>
+            </div>
+            <div class="kpi-card">
+                <span>Principal Demanda</span>
+                <h2 id="kpiTop" style="font-size: 1.5rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">-</h2>
+            </div>
+        </div>
+        <section class="controls">
+            <div class="control-group">
+                <label><i class="fas fa-calendar-alt"></i> Ano</label>
+                <select id="yearSelect" class="searchable-select">
+                    <option value="">Todos os Anos</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label><i class="fas fa-calendar-day"></i> Mês</label>
+                <select id="monthSelect" class="searchable-select">
+                    <option value="">Todos os Meses</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label><i class="fas fa-calendar-week"></i> Semana</label>
+                <select id="weekSelect" class="searchable-select" disabled>
+                    <option value="">Todas as Semanas</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label><i class="fas fa-map-marker-alt"></i> Unidade</label>
+                <select id="unitSelect" class="searchable-select">
+                    <option value="">Todas as Unidades</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label><i class="fas fa-file-invoice"></i> Serviço</label>
+                <select id="serviceSelect" class="searchable-select">
+                    <option value="">Todos os Serviços</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label style="visibility: hidden;">Exportar</label>
+                <button class="btn-pdf" onclick="generateGlobalPDF()">
+                    <i class="fas fa-file-pdf"></i> <span>Exportar PDF</span>
+                </button>
+            </div>
+        </section>
+        <div class="charts-grid">
+            <section class="chart-card">
+                <h3 id="rankingTitle">Ranking de Serviços</h3>
+                <div class="chart-container">
+                    <canvas id="rankingChart"></canvas>
+                </div>
+            </section>
+            <section class="chart-card">
+                <h3>Evolução Mensal</h3>
+                <div class="chart-container">
+                    <canvas id="timelineChart"></canvas>
+                </div>
+            </section>
+            <section class="chart-card full-width">
+                <h3 id="weeklyTitle">Demanda Semanal</h3>
+                <div class="chart-container">
+                    <canvas id="weeklyChart"></canvas>
+                </div>
+            </section>
+        </div>
+        <section class="table-wrapper">
+            <table id="reportTable">
+                <thead>
+                    <tr>
+                        <th>Serviço / Unidade</th>
+                        <th>Total de Pedidos</th>
+                        <th>Percentual (%)</th>
+                    </tr>
+                </thead>
+                <tbody id="servicesTableBody">
+                    <tr><td colspan="3" style="text-align:center; padding: 30px; color: #6b7280;">Carregando dados...</td></tr>
+                </tbody>
+            </table>
+        </section>
+    </main>
+</div>
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
+<script>
+    // --- Configuração Global do Chart.js para Tema Moderno ---
+    Chart.defaults.font.family = "'Inter', sans-serif";
+    Chart.defaults.color = '#6b7280';
+    Chart.defaults.borderColor = '#e5e7eb';
+    
+    // Cor Principal (Verde Esmeralda)
+    const PRIMARY_COLOR = '#10b981';
+    const PRIMARY_LIGHT = 'rgba(16, 185, 129, 0.1)';
+    // ----------------------------------------------------
+    Chart.register(ChartDataLabels);
+    let rawData = []; // Dados mensais
+    let rawWeeklyData = []; // Dados diários/semanais
+    let rankingChartInstance = null;
+    let timelineChartInstance = null;
+    let weeklyChartInstance = null;
+    const tableBody = document.getElementById('servicesTableBody');
+    const monthNames = [
+        "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+        "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+    ];
+    document.addEventListener('DOMContentLoaded', () => {
+        loadAllData();
+    });
+    function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('collapsed');
+    }
+    // 1. Carregamento dos Dados
+    function loadAllData() {
+        console.log("Iniciando carregamento dos CSVs...");
+        const p1 = new Promise((resolve) => {
+            Papa.parse('servicos_agregados.csv', {
+                download: true, header: true, delimiter: ";", skipEmptyLines: true, dynamicTyping: true,
+                complete: (results) => resolve({ source: 'monthly', data: results.data }),
+                error: () => resolve({ source: 'monthly', data: [] })
+            });
+        });
+        const p2 = new Promise((resolve) => {
+            Papa.parse('Dataset.csv', {
+                download: true, header: true, delimiter: ";", skipEmptyLines: true, dynamicTyping: true,
+                complete: (results) => resolve({ source: 'daily', data: results.data }),
+                error: () => resolve({ source: 'daily', data: [] })
+            });
+        });
+        Promise.all([p1, p2]).then(results => {
+            // Mensal
+            const resMonthly = results.find(r => r.source === 'monthly');
+            rawData = (resMonthly.data || []).map(normalizeKeys)
+                .filter(r => r.unidade && r.servicos && r.total !== undefined)
+                .map(r => ({
+                    unidade: String(r.unidade).trim(),
+                    servicos: String(r.servicos).trim(),
+                    mes_ano: String(r.mes_ano).trim(),
+                    total: Number(r.total) || 0
+                }));
+            // Diário
+            const resDaily = results.find(r => r.source === 'daily');
+            rawWeeklyData = (resDaily.data || []).map(normalizeKeys)
+                .filter(r => r.dia_mes_ano)
+                .map(r => {
+                    const dataValida = parseDateRobust(String(r.dia_mes_ano).trim());
+                    return {
+                        unidade: r.unidade ? String(r.unidade).trim() : 'N/A',
+                        servicos: r.servicos ? String(r.servicos).trim() : 'N/A',
+                        data: dataValida,
+                        total: r.total !== undefined ? Number(r.total) : 1
+                    };
+                })
+                .filter(r => r.data !== null);
+            initFilters();
+            updateDashboard();
+        });
+    }
+    function normalizeKeys(obj) {
+        if (!obj) return {};
+        const newObj = {};
+        Object.keys(obj).forEach(key => newObj[key.toLowerCase().trim()] = obj[key]);
+        return newObj;
+    }
+    function parseDateRobust(dateStr) {
+        if (!dateStr) return null;
+        if (dateStr.includes('-')) {
+            const parts = dateStr.split('-');
+            if (parts.length === 3) return new Date(parts[0], parts[1] - 1, parts[2]);
+        }
+        if (dateStr.includes('/')) {
+            const parts = dateStr.split('/');
+            if (parts.length === 3) return new Date(parts[2], parts[1] - 1, parts[0]);
+        }
+        return null;
+    }
+    function getWeekNumber(d) {
+        d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+        d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+        var yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+        var weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+        return { year: d.getUTCFullYear(), week: weekNo };
+    }
+    // 2. Inicializar Filtros
+    function initFilters() {
+        const unitSelect = document.getElementById('unitSelect');
+        const serviceSelect = document.getElementById('serviceSelect');
+        const yearSelect = document.getElementById('yearSelect');
+        
+        // População Estática/Inicial
+        const allUnits = new Set([...rawData.map(r => r.unidade), ...rawWeeklyData.map(r => r.unidade)]);
+        const allServices = new Set([...rawData.map(r => r.servicos), ...rawWeeklyData.map(r => r.servicos)]);
+        const yearsSet = new Set();
+        rawData.forEach(r => yearsSet.add(r.mes_ano.substring(0, 4)));
+        rawWeeklyData.forEach(r => yearsSet.add(String(r.data.getFullYear())));
+        unitSelect.innerHTML = '<option value="">Todas as Unidades</option>';
+        [...allUnits].sort().forEach(u => unitSelect.add(new Option(u, u)));
+        serviceSelect.innerHTML = '<option value="">Todos os Serviços</option>';
+        [...allServices].sort().forEach(s => serviceSelect.add(new Option(s, s)));
+        yearSelect.innerHTML = '<option value="">Todos os Anos</option>';
+        [...yearsSet].sort().reverse().forEach(y => yearSelect.add(new Option(y, y)));
+        // Inicializa Select2
+        $('.searchable-select').select2({ width: '100%' });
+        // Listeners
+        $('#yearSelect').on('change', () => { updateMonthOptions(); updateDashboard(); });
+        $('#unitSelect').on('change', () => { updateMonthOptions(); updateDashboard(); });
+        $('#monthSelect').on('change', () => { updateWeekOptions(); updateDashboard(); });
+        $('#weekSelect').on('change', updateDashboard);
+        $('#serviceSelect').on('change', updateDashboard);
+        updateMonthOptions();
+    }
+    function updateMonthOptions() {
+        const selYear = $('#yearSelect').val();
+        const selUnit = $('#unitSelect').val();
+        const monthSelect = document.getElementById('monthSelect');
+        const currentVal = $('#monthSelect').val();
+        monthSelect.innerHTML = '<option value="">Todos os Meses</option>';
+        
+        const availableMonths = new Set();
+        rawWeeklyData.forEach(row => {
+            const rowYear = String(row.data.getFullYear());
+            if ((!selYear || rowYear === selYear) &&
+                (!selUnit || row.unidade === selUnit)) {
+                availableMonths.add(row.data.getMonth());
+            }
+        });
+        [...availableMonths].sort((a, b) => a - b).forEach(monthIndex => {
+            monthSelect.add(new Option(monthNames[monthIndex], monthIndex));
+        });
+        if(currentVal && [...availableMonths].includes(parseInt(currentVal))) {
+            $('#monthSelect').val(currentVal).trigger('change.select2');
+        } else {
+            $('#monthSelect').val("").trigger('change.select2');
+        }
+        
+        // Ao mudar meses, atualiza semanas
+        updateWeekOptions();
+    }
+    function updateWeekOptions() {
+        const selYear = $('#yearSelect').val();
+        const selUnit = $('#unitSelect').val();
+        const selMonthIndex = $('#monthSelect').val();
+        const weekSelect = document.getElementById('weekSelect');
+        
+        weekSelect.innerHTML = '<option value="">Todas as Semanas</option>';
+        if (selMonthIndex === "") {
+            // Se nenhum mês selecionado, desabilita filtro de semana
+            weekSelect.disabled = true;
+            $('#weekSelect').prop('disabled', true); // Select2 compatibility
+            return;
+        }
+        weekSelect.disabled = false;
+        $('#weekSelect').prop('disabled', false);
+        // Coletar semanas disponíveis neste mês
+        const availableWeeks = new Set();
+        rawWeeklyData.forEach(row => {
+            const rowYear = String(row.data.getFullYear());
+            const rowMonthIndex = row.data.getMonth();
+            
+            if ((!selYear || rowYear === selYear) &&
+                (!selUnit || row.unidade === selUnit) &&
+                (rowMonthIndex === parseInt(selMonthIndex))) {
+                    
+                const wk = getWeekNumber(row.data);
+                // Usamos "ano-semana" como chave para garantir unicidade
+                availableWeeks.add(wk.week);
+            }
+        });
+        // Ordena semanas e preenche o select
+        const sortedWeeks = [...availableWeeks].sort((a, b) => a - b);
+        
+        sortedWeeks.forEach((weekNum, index) => {
+            // Exibe "Semana 1", "Semana 2" visualmente, mas guarda o número real da semana no value
+            const label = `Semana ${index + 1}`;
+            weekSelect.add(new Option(label, weekNum));
+        });
+        
+        $('#weekSelect').trigger('change.select2');
+    }
+    // 3. Atualizar Dashboard
+    function updateDashboard() {
+        const selUnit = $('#unitSelect').val();
+        const selService = $('#serviceSelect').val();
+        const selYear = $('#yearSelect').val();
+        const selMonthIndex = $('#monthSelect').val();
+        const selWeekNum = $('#weekSelect').val(); // Número da semana ISO
+        
+        // --- 1. Filtro Mensal (Para Gráficos e Contexto Geral) ---
+        const filteredMonthly = rawData.filter(row => {
+            const [y, m] = row.mes_ano.split(/[-/]/);
+            let matchMonth = true;
+            if (selMonthIndex !== "") {
+                matchMonth = parseInt(m) === (parseInt(selMonthIndex) + 1);
+            }
+            return (!selUnit || row.unidade === selUnit) &&
+                   (!selService || row.servicos === selService) &&
+                   (!selYear || row.mes_ano.startsWith(selYear)) &&
+                   matchMonth;
+        });
+        
+        // --- 2. Filtro Diário (Para quando uma semana específica é selecionada) ---
+        const filteredDaily = rawWeeklyData.filter(row => {
+            const rowYear = String(row.data.getFullYear());
+            const rowMonthIndex = row.data.getMonth();
+            const wk = getWeekNumber(row.data);
+            return (!selUnit || row.unidade === selUnit) &&
+                   (!selService || row.servicos === selService) &&
+                   (!selYear || rowYear === selYear) &&
+                   (selMonthIndex === "" || rowMonthIndex === parseInt(selMonthIndex)) &&
+                   (selWeekNum === "" || wk.week === parseInt(selWeekNum));
+        });
+        
+        // --- DEFINIÇÃO DO KPI DE TOTAL (Respeita TODOS os filtros: Semana/Mês/Ano) ---
+        // Se tem semana selecionada, usa os dados diários filtrados. Se não, usa o mensal.
+        const dataSource = (selWeekNum !== "") ? filteredDaily : filteredMonthly;
+        
+        let totalGeral = 0;
+        const rankingMap = {};
+        
+        dataSource.forEach(row => {
+            const key = selService ? row.unidade : row.servicos;
+            rankingMap[key] = (rankingMap[key] || 0) + row.total;
+            totalGeral += row.total;
+        });
+
+        // --- CÁLCULO DA MÉDIA (Contexto Anual/Período Global) ---
+        // Aqui criamos um conjunto de dados separado para calcular a média.
+        // Ele respeita Unidade, Serviço e Ano, mas IGNORA o mês e semana selecionados.
+        const dadosParaMedia = rawData.filter(row => {
+             return (!selUnit || row.unidade === selUnit) &&
+                    (!selService || row.servicos === selService) &&
+                    (!selYear || row.mes_ano.startsWith(selYear)); 
+        });
+
+        let totalParaMedia = 0;
+        const mesesUnicosParaMedia = new Set();
+        dadosParaMedia.forEach(row => {
+            totalParaMedia += row.total;
+            mesesUnicosParaMedia.add(row.mes_ano);
+        });
+
+        const qtdMeses = mesesUnicosParaMedia.size;
+        // Se tiver meses no ano, divide pelo total de meses. Se não, é 0.
+        const mediaMensal = qtdMeses > 0 ? Math.round(totalParaMedia / qtdMeses) : 0;
+        
+        const topKey = Object.keys(rankingMap).length > 0 
+            ? Object.entries(rankingMap).sort((a, b) => b[1] - a[1])[0][0] : "-";
+        
+        updateKPIs(totalGeral, mediaMensal, topKey);
+        
+        // --- Ranking Chart ---
+        const rankingSorted = Object.keys(rankingMap)
+            .map(key => ({
+                label: key, value: rankingMap[key],
+                percentage: totalGeral > 0 ? ((rankingMap[key] / totalGeral) * 100).toFixed(1) : 0
+            }))
+            .sort((a, b) => b.value - a.value);
+        renderRankingChart(selService ? rankingSorted : rankingSorted.slice(0, 10), selService);
+        
+        // --- Timeline Chart ---
+        const timelineMap = {};
+        filteredMonthly.forEach(row => {
+            timelineMap[row.mes_ano] = (timelineMap[row.mes_ano] || 0) + row.total;
+        });
+        const meses = Object.keys(timelineMap).sort();
+        renderTimelineChart(meses, meses.map(m => timelineMap[m]));
+        
+        // --- Weekly Chart (Lógica Dinâmica) ---
+        // Se UMA semana específica for selecionada -> Mostra DIAS
+        // Se NENHUMA semana específica selecionada -> Mostra SEMANAS
+        const isSingleWeekSelected = selWeekNum !== "";
+        const weeklyMap = {};
+        if (filteredDaily.length > 0) {
+            filteredDaily.forEach(row => {
+                let key;
+                if (isSingleWeekSelected) {
+                    // Agrupamento por Dia (DD/MM)
+                    const day = String(row.data.getDate()).padStart(2, '0');
+                    const mo = String(row.data.getMonth() + 1).padStart(2, '0');
+                    key = `${day}/${mo}`;
+                } else {
+                    // Agrupamento por Semana
+                    const wk = getWeekNumber(row.data);
+                    key = `${wk.year}-S${String(wk.week).padStart(2, '0')}`;
+                }
+                weeklyMap[key] = (weeklyMap[key] || 0) + row.total;
+            });
+        }
+        const labels = Object.keys(weeklyMap).sort();
+        const values = labels.map(k => weeklyMap[k]);
+        
+        // Ajuste labels visual se for modo semana
+        const displayLabels = isSingleWeekSelected ? labels : labels.map(s => {
+            const [ano, semana] = s.split('-');
+            return `${semana}/${ano}`;
+        });
+        
+        // Pega texto da semana selecionada para o título
+        const selWeekText = $("#weekSelect option:selected").text();
+        const chartTitle = isSingleWeekSelected
+            ? `Demanda Diária (${selWeekText})`
+            : "Demanda Semanal";
+            
+        document.getElementById('weeklyTitle').innerText = chartTitle;
+        renderWeeklyChart(displayLabels, values, isSingleWeekSelected ? 'Dias' : 'Semanas');
+        updateTable(rankingSorted);
+    }
+    function updateKPIs(total, media, top) {
+        document.getElementById('kpiTotal').innerText = total.toLocaleString('pt-BR');
+        document.getElementById('kpiMedia').innerText = media.toLocaleString('pt-BR');
+        document.getElementById('kpiTop').innerText = top;
+        document.getElementById('kpiTop').title = top;
+    }
+    function renderRankingChart(data, isFilteredByService) {
+        const ctx = document.getElementById('rankingChart').getContext('2d');
+        if (rankingChartInstance) rankingChartInstance.destroy();
+        document.getElementById('rankingTitle').innerText = isFilteredByService ? `Distribuição por Unidade` : "Top 10 Serviços";
+        
+        rankingChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.map(d => d.label),
+                datasets: [{
+                    data: data.map(d => d.value),
+                    backgroundColor: PRIMARY_COLOR,
+                    borderRadius: 4,
+                    barPercentage: 0.7
+                }]
+            },
+            options: {
+                indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false }, datalabels: { anchor: 'end', align: 'end', color: '#1f2937', formatter: (v, ctx) => data[ctx.dataIndex].percentage + '%' } },
+                // CORREÇÃO 1: grid: { display: false } remove as linhas verticais que cortam o texto
+                scales: { x: { beginAtZero: true, grid: { display: false }, ticks: { color: '#6b7280' } }, y: { grid: { display: false }, ticks: { color: '#6b7280' } } }
+            }
+        });
+    }
+    function renderTimelineChart(labels, values) {
+        const ctx = document.getElementById('timelineChart').getContext('2d');
+        if (timelineChartInstance) timelineChartInstance.destroy();
+        
+        timelineChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Total Mensal', data: values, borderColor: PRIMARY_COLOR, backgroundColor: PRIMARY_LIGHT, fill: true, tension: 0.4, pointRadius: 4
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                plugins: { datalabels: { display: false } },
+                // CORREÇÃO 1: Removendo linhas horizontais (grid)
+                scales: { y: { beginAtZero: true, grid: { display: false }, ticks: { color: '#6b7280' } }, x: { grid: { display: false }, ticks: { color: '#6b7280' } } }
+            }
+        });
+    }
+    function renderWeeklyChart(labels, values, labelType) {
+        const ctx = document.getElementById('weeklyChart').getContext('2d');
+        if (weeklyChartInstance) weeklyChartInstance.destroy();
+        weeklyChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: labelType === 'Dias' ? 'Solicitações Diárias' : 'Solicitações Semanais',
+                    data: values,
+                    borderColor: PRIMARY_COLOR, backgroundColor: PRIMARY_LIGHT, borderWidth: 2, pointRadius: 4, fill: true, tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    datalabels: { display: true, align: 'top', color: PRIMARY_COLOR },
+                    tooltip: { callbacks: { title: (items) => `${labelType === 'Dias' ? 'Dia' : 'Semana'}: ${items[0].label}` } }
+                },
+                // CORREÇÃO 1: Removendo linhas horizontais (grid)
+                scales: { y: { beginAtZero: true, grid: { display: false }, ticks: { color: '#6b7280' } }, x: { grid: { display: false }, ticks: { color: '#6b7280' } } }
+            }
+        });
+    }
+    function updateTable(data) {
+        tableBody.innerHTML = data.map(item => `
+            <tr><td title="${item.label}"><strong>${item.label}</strong></td><td>${item.value.toLocaleString('pt-BR')}</td><td>${item.percentage}%</td></tr>
+        `).join('');
+    }
+    async function generateGlobalPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('p', 'mm', 'a4');
+        doc.setFontSize(16); doc.text("Relatório de Demanda", 14, 20);
+        doc.setFontSize(10); doc.text(`Gerado em: ${new Date().toLocaleDateString()}`, 14, 26);
+        
+        const unit = $('#unitSelect').val() || "Todas";
+        const year = $('#yearSelect').val() || "Todos";
+        const monthIdx = $('#monthSelect').val();
+        const month = monthIdx !== "" ? monthNames[monthIdx] : "Todos";
+        doc.text(`Filtros: Ano ${year} | Mês ${month} | Unidade ${unit}`, 14, 35);
+        
+        let currentY = 45;
+        const addChartToPDF = (chart, title, x, y, w, h) => {
+            if(chart) {
+                try {
+                    doc.text(title, x, y - 2);
+                    doc.addImage(chart.toBase64Image(), 'PNG', x, y, w, h);
+                } catch(e) { console.warn("Erro imagem PDF", e); }
+            }
+        };
+        addChartToPDF(rankingChartInstance, "Ranking", 14, currentY, 80, 50);
+        addChartToPDF(timelineChartInstance, "Evolução", 105, currentY, 90, 50);
+        currentY += 60;
+        
+        if (weeklyChartInstance) {
+            const wTitle = document.getElementById('weeklyTitle').innerText;
+            addChartToPDF(weeklyChartInstance, wTitle, 14, currentY, 180, 50);
+            currentY += 60;
+        }
+        doc.autoTable({ html: '#reportTable', startY: currentY, theme: 'striped', headStyles: { fillColor: [16, 185, 129] } });
+        doc.save('relatorio_servicos.pdf');
+    }
+</script>
+</body>
+</html>

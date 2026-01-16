@@ -1,0 +1,1201 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Previsão Futura | Dimensionamento</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../style.css">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Exportação (PDF) da tabela -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    
+    
+    <style>
+        .kpi-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: default;
+            background: #fff; padding: 20px; border-radius: 8px; text-align: center;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border-top: 4px solid #6366f1;
+        }
+        .kpi-card:hover { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
+
+        .kpi-summary-grid {
+            display: grid; 
+            grid-template-columns: repeat(4, 1fr); 
+            gap: 15px; 
+            margin-bottom: 20px;
+        }
+
+        .kpi-label { font-size: 0.75rem; color: #64748b; text-transform: uppercase; font-weight: 700; margin-bottom: 8px; }
+        .kpi-value { font-size: 1.5rem; font-weight: 800; color: #1e293b; }
+        .kpi-unit-name { color: #6366f1; font-size: 0.9rem; font-weight: 700; display: block; margin-bottom: 5px; }
+
+        .kpi-card.modelo { border-top-color: #f59e0b; }
+        .kpi-card.equipe { border-top-color: #10b981; }
+        .kpi-card.produtividade { border-top-color: #8b5cf6; }
+
+        .controls { 
+            display: flex; gap: 20px; align-items: center; padding: 20px; 
+            background: #fff; border-radius: 8px; margin-bottom: 20px; 
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        }
+        .control-group { flex: 1; max-width: 350px; }
+        select { width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; background-color: #f8fafc; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th { background: #f8fafc; color: #64748b; font-size: 0.75rem; padding: 12px; text-align: left; border-bottom: 2px solid #f1f5f9; }
+        td { padding: 12px; border-bottom: 1px solid #f1f5f9; font-size: 0.9rem; }
+        .fw-bold-green { font-weight: 800; color: #10b981; }
+        .fw-bold-dark { font-weight: 800; color: #1e293b; }
+        
+        .text-muted { color: #94a3b8 !important; }
+
+        @media (max-width: 900px) { 
+            .kpi-summary-grid { 
+                grid-template-columns: repeat(2, 1fr); 
+            } 
+        }
+        
+        @media (max-width: 600px) { 
+            .kpi-summary-grid { 
+                grid-template-columns: 1fr; 
+            } 
+        }
+
+        /* Toggles de séries do gráfico - BOTÕES NOVOS */
+        .series-toggles{
+            display:flex;
+            flex-wrap:wrap;
+            gap:10px;
+            margin:12px 0 0 0;
+        }
+        
+        .series-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border: 2px solid #e2e8f0;
+            background: #f8fafc;
+            border-radius: 999px;
+            font-size: 0.85rem;
+            color: #334155;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 600;
+        }
+
+        .series-btn:hover {
+            background: #f1f5f9;
+            transform: translateY(-1px);
+        }
+
+        .series-btn.active {
+            background: #1e293b;
+            color: white;
+            border-color: #1e293b;
+        }
+
+        .series-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        /* Controles de Visualização */
+        #viewModeControls {
+            margin: 15px 0;
+        }
+
+        .view-toggle {
+            display: flex;
+            gap: 10px;
+            background: #f8fafc;
+            padding: 8px;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .view-btn {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            background: transparent;
+            color: #64748b;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+
+        .view-btn:hover {
+            background: #f1f5f9;
+            color: #334155;
+        }
+
+        .view-btn.active {
+            background: white;
+            color: #1e293b;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border: 1px solid #e2e8f0;
+        }
+
+        /* Estilos específicos para tabelas */
+        .date-cell {
+            min-width: 100px;
+        }
+        
+        .date-cell .date {
+            font-weight: 600;
+            color: #1e293b;
+        }
+        
+        .date-cell .weekday {
+            font-size: 0.8rem;
+            color: #64748b;
+            margin-top: 2px;
+        }
+        
+        /* Performance Table - cores específicas */
+        .real-cell {
+            font-weight: 600;
+            color: #10b981;
+        }
+        
+        .previsao-cell {
+            font-weight: 700;
+            color: #6366f1;
+        }
+        
+        .media-cell {
+            font-weight: 500;
+            color: #0ea5e9;
+        }
+        
+        .mediana-cell {
+            font-weight: 500;
+            color: #f59e0b;
+        }
+        
+        .erro-cell {
+            font-weight: 700;
+            color: #ef4444;
+        }
+        
+        /* Dimensionamento Table - cores e organização */
+        .atendentes-cell {
+            font-weight: 700;
+            color: #8b5cf6;
+            text-align: center;
+        }
+        
+        .demanda-cell {
+            font-weight: 700;
+            color: #10b981;
+            text-align: center;
+        }
+        
+        .modelo-cell {
+            font-weight: 500;
+            color: #f59e0b;
+            text-align: center;
+        }
+        
+        .produtividade-cell {
+            font-weight: 600;
+            color: #6366f1;
+            text-align: center;
+        }
+        
+        .real-dim-cell {
+            font-weight: 600;
+            color: #10b981;
+            text-align: center;
+        }
+        
+        .real-dim-cell.pendente {
+            color: #94a3b8;
+            font-weight: 500;
+        }
+        
+        .table-dimensionamento th {
+            text-align: center;
+        }
+        
+        /* Indicador de ícone nas células */
+        .cell-with-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        /* Ações da tabela (exportar) */
+        .table-actions{
+            display:flex;
+            gap:10px;
+            justify-content:flex-end;
+            align-items:center;
+            flex-wrap:wrap;
+            margin: 12px 0 6px 0;
+        }
+        .table-actions button{
+            border: none;
+            cursor: pointer;
+            padding: 10px 12px;
+            border-radius: 10px;
+            font-weight: 800;
+            font-size: 0.85rem;
+            background: #1e293b;
+            color: #fff;
+            display: inline-flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .table-actions button.secondary{ background: #334155; }
+        .table-actions button:hover{ filter: brightness(1.05); }
+
+        /* Ações da tabela */
+        .table-actions{
+            display:flex;
+            gap:10px;
+            align-items:center;
+            justify-content:flex-end;
+            margin: 12px 0 6px 0;
+            flex-wrap: wrap;
+        }
+        .btn-download{
+            border: 1px solid #e2e8f0;
+            background: #0f172a;
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 0.85rem;
+            display:flex;
+            gap:8px;
+            align-items:center;
+        }
+        .btn-download.secondary{
+            background: #334155;
+        }
+        .btn-download:disabled{
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        /* Responsividade adicional */
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+            }
+            
+            .control-group {
+                max-width: 100% !important;
+            }
+            
+            .view-toggle {
+                flex-direction: column;
+            }
+            
+            .series-toggles {
+                justify-content: center;
+            }
+            
+            .table-wrapper {
+                overflow-x: auto;
+            }
+            
+            table {
+                min-width: 800px;
+            }
+            
+            .cell-with-icon {
+                flex-direction: column;
+                gap: 4px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="layout">
+        <aside class="sidebar" id="sidebar">
+          <div class="sidebar-header">
+              <div class="sidebar-logo">
+                  <img src="../equatorial.png" alt="Equatorial Energia">
+              </div>
+
+              <button class="toggle-btn" onclick="toggleSidebar()">
+                  <i class="fas fa-bars"></i>
+              </button>
+          </div>
+            <nav class="nav-menu">
+                <a href="previsao.html" class="nav-link active">
+                    <i class="fas fa-bolt"></i><span>Previsão Futura</span>
+                </a>
+                <a href="../section_metricas/metricas.html" class="nav-link">
+                    <i class="fas fa-percent"></i><span>Métricas</span>
+                </a>
+                <a href="../section_retreino/retreino.html" class="nav-link">
+                    <i class="fas fa-sync-alt"></i><span>Retreinamento</span>
+                </a>
+                <a href="../section_servicos/servicos.html" class="nav-link">
+                    <i class="fas fa-users"></i><span>Serviços</span>
+                </a>
+            </nav>
+        </aside>
+
+        <main class="content">
+            <header>
+                <h1>Planejamento de Dimensionamento</h1>
+                <p>Previsão de carga de trabalho e equipe necessária para Outubro de 2025.</p>
+            </header>
+
+            <section class="card controls">
+                <div class="control-group">
+                    <label><i class="fas fa-map-marker-alt"></i> Unidade</label>
+                    <select id="forecastUnit"></select>
+                </div>
+                <div class="control-group">
+                    <label><i class="fas fa-calendar-day"></i> Horizonte</label>
+                    <select id="forecastHorizon">
+                        <option value="7">Próximos 7 dias</option>
+                        <option value="14">Próximos 14 dias</option>
+                        <option value="30" selected>Mês Completo (30 dias)</option>
+                    </select>
+                </div>
+            </section>
+
+            <div class="kpi-summary-grid">
+                <div class="kpi-card">
+                    <span id="displayUnit" class="kpi-unit-name">--</span>
+                    <div class="kpi-label">Demanda Total</div>
+                    <div id="kpiTotalDemanda" class="kpi-value">0</div>
+                </div>
+                <div class="kpi-card equipe">
+                    <div class="kpi-label">Equipe Média / Dia</div>
+                    <div id="kpiMediaStaff" class="kpi-value">0</div>
+                    <div style="font-size: 0.7rem; color: #94a3b8; font-weight: 600;">ATENDENTES</div>
+                </div>
+                <div class="kpi-card produtividade">
+                    <div class="kpi-label">Produtividade Média</div>
+                    <div id="kpiProdutividade" class="kpi-value">--</div>
+                    <div style="font-size: 0.7rem; color: #94a3b8; font-weight: 600;">ATENDIMENTOS/HORA</div>
+                </div>
+                <div class="kpi-card modelo">
+                    <div class="kpi-label">Algoritmo Recomendado</div>
+                    <div id="kpiModelName" class="kpi-value" style="font-size: 1.2rem; color: #b45309;">--</div>
+                    <div style="font-size: 0.7rem; color: #94a3b8; font-weight: 600;">MELHOR PERFORMANCE</div>
+                </div>
+            </div>
+
+            <section class="card">
+                <h3><i class="fas fa-chart-area"></i> Evolução Diária de Demanda</h3>
+                <div class="series-toggles" id="seriesToggles">
+                    <!-- Botões serão gerados dinamicamente -->
+                </div>
+                <div class="chart-container" style="height: 380px; margin-top: 15px;">
+                    <canvas id="forecastChartCanvas"></canvas>
+                </div>
+            </section>
+
+            <section class="card table-wrapper">
+                <h3 id="tableTitle"><i class="fas fa-table"></i> Detalhamento de Performance</h3>
+                
+                <!-- Controles de Visualização -->
+                <div id="viewModeControls"></div>
+                
+                <div class="table-actions">
+                    <button class="btn-download secondary" id="btnDownloadCSV" type="button"><i class="fas fa-file-csv"></i> Baixar CSV</button>
+                    <button class="btn-download" id="btnDownloadPDF" type="button"><i class="fas fa-file-pdf"></i> Baixar PDF</button>
+                </div>
+                
+                <div id="tablePerformance">
+                    <table class="table-performance">
+                        <thead>
+                            <tr>
+                                <th style="width: 120px;">Data</th>
+                                <th style="width: 100px;">Real</th>
+                                <th style="width: 100px;">Previsão</th>
+                                <th style="width: 140px;">Média (dia)</th>
+                                <th style="width: 140px;">Mediana (dia)</th>
+                                <th style="width: 120px;">Erro Absoluto</th>
+                            </tr>
+                        </thead>
+                        <tbody id="forecastTable"></tbody>
+                    </table>
+                </div>
+                
+                <div id="tableDimensionamento" style="display: none;">
+                    <table class="table-dimensionamento">
+                        <thead>
+                            <tr>
+                            <th style="width: 120px;">Data</th>
+                            <th style="width: 120px;">Atendentes</th>
+                            <th style="width: 140px;">Demanda Prevista</th>
+                            <th style="width: 160px;">Produtividade/h</th> <!-- Aumentei de 140 para 160 -->
+                            <th style="width: 120px;">Real</th> <!-- Aumentei de 100 para 120 -->
+                            </tr>
+                        </thead>
+                        <tbody id="forecastTableDim"></tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+    <script>
+// Previsão Futura - gráfico unificado (Previsto + Real + Média/Mediana por dia da semana)
+const FORECAST_CSV_PATH = 'dimensionamento_outubro_2025_GERAL.csv'; 
+const HIST_REAL_CSV_PATH = 'demandareal.csv';
+
+let forecastData = [];
+let histRealData = [];
+let realByUnitDate = new Map();
+let weekdayStatsByUnit = new Map();
+let forecastChart = null;
+let currentFilteredRows = [];
+let currentViewMode = 'performance'; // 'performance' ou 'dimensionamento'
+
+const SERIES_STORAGE_KEY = 'brisa_previsao_series_v1';
+
+function toggleSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  if (sidebar) sidebar.classList.toggle('collapsed');
+}
+
+// -------------------------
+// Datas / Dia da semana
+// -------------------------
+function parseDMYtoISO(dmy) {
+  if (!dmy || typeof dmy !== 'string') return '';
+  const p = dmy.split('/');
+  if (p.length !== 3) return '';
+  const dd = String(p[0]).padStart(2, '0');
+  const mm = String(p[1]).padStart(2, '0');
+  const yyyy = String(p[2]);
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function parseISODate(iso) {
+  if (!iso || typeof iso !== 'string') return null;
+  const p = iso.split('-');
+  if (p.length !== 3) return null;
+  const y = Number(p[0]);
+  const m = Number(p[1]);
+  const d = Number(p[2]);
+  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return null;
+  return new Date(y, m - 1, d);
+}
+
+function weekdayIndexFromISO(iso) {
+  const dt = parseISODate(iso);
+  if (!dt) return null;
+  return dt.getDay();
+}
+
+function weekdayNamePT(idx) {
+  const dias = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  return (idx === null || idx === undefined) ? '' : (dias[idx] || '');
+}
+
+// -------------------------
+// Estatística
+// -------------------------
+function mean(arr) {
+  if (!arr || arr.length === 0) return null;
+  const s = arr.reduce((a, b) => a + b, 0);
+  return Math.round(s / arr.length);
+}
+
+function median(arr) {
+  if (!arr || arr.length === 0) return null;
+  const s = [...arr].sort((a, b) => a - b);
+  const mid = Math.floor(s.length / 2);
+  const med = (s.length % 2 === 1) ? s[mid] : (s[mid - 1] + s[mid]) / 2;
+  return Math.round(med);
+}
+
+function safeNumber(v) {
+  if (v === null || v === undefined) return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.round(n) : null;
+}
+
+function formatNumberPt(n) {
+  if (n === null || n === undefined) return '-';
+  const num = Number(n);
+  return Number.isFinite(num) ? num.toLocaleString('pt-BR', { 
+    maximumFractionDigits: 0,
+    minimumFractionDigits: 0
+  }) : '-';
+}
+
+function sanitizeFilename(s) {
+  return String(s || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9_-]+/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 80);
+}
+
+// -------------------------
+// Controles de Séries (Botões em vez de Checkboxes)
+// -------------------------
+function loadSeriesPrefs() {
+  try {
+    const raw = localStorage.getItem(SERIES_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : { previsto: true, real: true, media: true, mediana: true };
+  } catch {
+    return { previsto: true, real: true, media: true, mediana: true };
+  }
+}
+
+function saveSeriesPrefs(prefs) {
+  try {
+    localStorage.setItem(SERIES_STORAGE_KEY, JSON.stringify(prefs));
+  } catch {}
+}
+
+function createSeriesControls() {
+  const container = document.getElementById('seriesToggles');
+  if (!container) return;
+  
+  // Remover checkboxes antigos
+  container.innerHTML = '';
+  
+  const series = [
+    { id: 'previsto', label: 'Previsto', color: '#6366f1' },
+    { id: 'real', label: 'Real', color: '#10b981' },
+    { id: 'media', label: 'Média', color: '#0ea5e9' },
+    { id: 'mediana', label: 'Mediana', color: '#f59e0b' }
+  ];
+  
+  const prefs = loadSeriesPrefs();
+  
+  series.forEach(serie => {
+    const button = document.createElement('button');
+    button.className = `series-btn ${prefs[serie.id] ? 'active' : ''}`;
+    button.dataset.series = serie.id;
+    button.innerHTML = `
+      <span class="series-dot" style="background-color: ${serie.color}"></span>
+      ${serie.label}
+    `;
+    
+    button.addEventListener('click', function() {
+      const seriesId = this.dataset.series;
+      const isActive = !this.classList.contains('active');
+      
+      // Atualizar botão
+      this.classList.toggle('active');
+      
+      // Atualizar preferências
+      const newPrefs = { ...loadSeriesPrefs(), [seriesId]: isActive };
+      saveSeriesPrefs(newPrefs);
+      
+      // Atualizar gráfico
+      if (forecastChart) {
+        forecastChart.data.datasets.forEach(ds => {
+          if (ds.seriesKey === seriesId) {
+            ds.hidden = !isActive;
+          }
+        });
+        forecastChart.update();
+      }
+    });
+    
+    container.appendChild(button);
+  });
+}
+
+// -------------------------
+// Controles de Visualização
+// -------------------------
+function createViewModeControls() {
+  const container = document.getElementById('viewModeControls');
+  if (!container) return;
+  
+  container.innerHTML = `
+    <div class="view-toggle">
+      <button class="view-btn ${currentViewMode === 'performance' ? 'active' : ''}" data-view="performance">
+        <i class="fas fa-chart-line"></i> Performance
+      </button>
+      <button class="view-btn ${currentViewMode === 'dimensionamento' ? 'active' : ''}" data-view="dimensionamento">
+        <i class="fas fa-users"></i> Dimensionamento
+      </button>
+    </div>
+  `;
+  
+  // Adicionar event listeners
+  document.querySelectorAll('.view-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const newView = this.dataset.view;
+      if (newView !== currentViewMode) {
+        currentViewMode = newView;
+        
+        // Atualizar botões
+        document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        
+        // Atualizar tabela
+        updateTableViews(currentFilteredRows);
+        
+        // Atualizar título da tabela
+        const tableTitle = document.getElementById('tableTitle');
+        if (tableTitle) {
+          tableTitle.innerHTML = currentViewMode === 'performance' 
+            ? '<i class="fas fa-table"></i> Detalhamento de Performance'
+            : '<i class="fas fa-table"></i> Detalhamento de Dimensionamento';
+        }
+      }
+    });
+  });
+}
+
+// -------------------------
+// Carregamento de dados
+// -------------------------
+async function fetchCsvText(path) {
+  const res = await fetch(path);
+  if (!res.ok) throw new Error(`Falha ao carregar ${path} (HTTP ${res.status})`);
+  return await res.text();
+}
+
+async function carregarDados() {
+  try {
+    const [forecastCsvText, histCsvText] = await Promise.all([
+      fetchCsvText(FORECAST_CSV_PATH),
+      fetchCsvText(HIST_REAL_CSV_PATH).catch(() => null)
+    ]);
+
+    // Forecast - IMPORTANTE: Lidar com vírgula como separador decimal
+    const forecastParsed = Papa.parse(forecastCsvText, {
+      header: true,
+      delimiter: ';',
+      skipEmptyLines: true,
+      transform: (value, field) => {
+        // Converter vírgula para ponto em números
+        if (typeof value === 'string' && (field === 'Produtividade_Ref')) {
+          return value.replace(',', '.');
+        }
+        return value;
+      }
+    });
+
+    forecastData = (forecastParsed.data || [])
+      .map(row => {
+        const dataDMY = row.Data;
+        const dataISO = parseDMYtoISO(dataDMY);
+        const w = weekdayIndexFromISO(dataISO);
+        
+        // Converter produtividade para número
+        let produtividade = row.Produtividade_Ref;
+        if (typeof produtividade === 'string') {
+          produtividade = parseFloat(produtividade.replace(',', '.'));
+        }
+        
+        return {
+          dataDMY,
+          dataISO,
+          weekdayIdx: w,
+          weekdayPT: weekdayNamePT(w),
+          unidade: row.Unidade,
+          demandaPrevista: safeNumber(row.Demanda_Prevista),
+          modelo: row.Modelo,
+          produtividade: Number.isFinite(produtividade) ? Math.round(produtividade) : null,
+          atendentes: safeNumber(row.Atendentes_Necessarios)
+        };
+      })
+      .filter(r => r.unidade && r.dataISO);
+
+    // Histórico real
+    histRealData = [];
+    realByUnitDate = new Map();
+    weekdayStatsByUnit = new Map();
+
+    if (histCsvText) {
+      const histParsed = Papa.parse(histCsvText, {
+        header: true,
+        delimiter: ';',
+        skipEmptyLines: true,
+        dynamicTyping: true
+      });
+
+      histRealData = (histParsed.data || [])
+        .map(row => {
+          const dataISO = row.data;
+          const w = weekdayIndexFromISO(dataISO);
+          return {
+            dataISO,
+            weekdayIdx: w,
+            unidade: row.unidade,
+            real: safeNumber(row.demanda)
+          };
+        })
+        .filter(r => r.unidade && r.dataISO && r.real !== null);
+
+      // map real (unit|date)
+      for (const r of histRealData) {
+        realByUnitDate.set(`${r.unidade}|${r.dataISO}`, r.real);
+      }
+
+      // buckets por unidade/diaSemana
+      const buckets = new Map();
+      for (const r of histRealData) {
+        if (r.weekdayIdx === null) continue;
+        const unit = r.unidade;
+        if (!buckets.has(unit)) buckets.set(unit, new Map());
+        const byW = buckets.get(unit);
+        if (!byW.has(r.weekdayIdx)) byW.set(r.weekdayIdx, []);
+        byW.get(r.weekdayIdx).push(r.real);
+      }
+
+      // stats (com números inteiros)
+      for (const [unit, byW] of buckets.entries()) {
+        const statsW = new Map();
+        for (const [w, arr] of byW.entries()) {
+          statsW.set(w, { 
+            media: Math.round(mean(arr)), 
+            mediana: Math.round(median(arr)) 
+          });
+        }
+        weekdayStatsByUnit.set(unit, statsW);
+      }
+    }
+
+    // Popular unidades
+    const units = [...new Set(forecastData.map(d => d.unidade))].sort();
+    const unitSelect = document.getElementById('forecastUnit');
+    if (unitSelect) {
+      unitSelect.innerHTML = units.map(u => `<option value="${u}">${u}</option>`).join('');
+      unitSelect.addEventListener('change', atualizarInterface);
+    }
+    document.getElementById('forecastHorizon')?.addEventListener('change', atualizarInterface);
+
+    // Criar controles de séries
+    createSeriesControls();
+    
+    // Criar controles de visualização
+    createViewModeControls();
+    
+    // Se houver unidades, selecionar a primeira
+    if (units.length > 0) {
+      unitSelect.value = units[0];
+      atualizarInterface();
+    }
+    
+  } catch (err) {
+    console.error('Erro ao carregar dados:', err);
+    alert('Erro ao carregar dados. Verifique se os arquivos CSV estão na pasta correta.');
+  }
+}
+
+// -------------------------
+// UI
+// -------------------------
+function atualizarInterface() {
+  const unitEl = document.getElementById('forecastUnit');
+  const horizonEl = document.getElementById('forecastHorizon');
+  if (!unitEl || !horizonEl) return;
+
+  const selectedUnit = unitEl.value;
+  const horizonValue = parseInt(horizonEl.value, 10);
+
+  // Filtrar dados - assumindo que CSV já tem só dias úteis
+  const filtered = forecastData
+    .filter(d => d.unidade === selectedUnit)
+    .slice(0, Number.isFinite(horizonValue) ? horizonValue : 30)
+    .map(d => {
+      const real = realByUnitDate.get(`${selectedUnit}|${d.dataISO}`) ?? null;
+      const statsW = weekdayStatsByUnit.get(selectedUnit);
+      const stats = statsW ? statsW.get(d.weekdayIdx) : null;
+      const prev = safeNumber(d.demandaPrevista);
+      const erroAbs = (real !== null && prev !== null) ? Math.abs(prev - real) : null;
+      
+      return {
+        ...d,
+        real,
+        mediaDiaSemana: stats ? stats.media : null,
+        medianaDiaSemana: stats ? stats.mediana : null,
+        erroAbs: erroAbs ? Math.round(erroAbs) : null,
+        atendentes: d.atendentes ? Math.round(d.atendentes) : null,
+        produtividade: d.produtividade
+      };
+    });
+
+  if (filtered.length === 0) return;
+
+  // Guarda para exportação
+  currentFilteredRows = filtered;
+
+  // KPIs (com média de atendentes por dia)
+  const totalDemanda = filtered.reduce((acc, curr) => acc + (curr.demandaPrevista || 0), 0);
+  const somaAtendentes = filtered.reduce((acc, curr) => acc + (curr.atendentes || 0), 0);
+  const mediaAtendentes = Math.round(somaAtendentes / filtered.length);
+  const modeloUnidade = filtered[0].modelo;
+  const produtividadeMedia = filtered[0]?.produtividade || '-';
+
+  document.getElementById('displayUnit').textContent = selectedUnit;
+  document.getElementById('kpiTotalDemanda').textContent = totalDemanda.toLocaleString('pt-BR');
+  document.getElementById('kpiMediaStaff').textContent = mediaAtendentes;
+  document.getElementById('kpiModelName').textContent = modeloUnidade;
+  document.getElementById('kpiProdutividade').textContent = produtividadeMedia;
+
+  // Atualizar tabelas baseada no modo de visualização
+  updateTableViews(filtered);
+  
+  // Atualizar gráfico
+  renderizarGrafico(filtered);
+}
+
+function updateTableViews(data) {
+  // Performance Table - ORGANIZADA
+  const tbodyPerf = document.getElementById('forecastTable');
+  if (tbodyPerf) {
+    tbodyPerf.innerHTML = data.map(d => `
+      <tr>
+        <td class="date-cell">
+          <div class="date">${d.dataDMY}</div>
+          <div class="weekday">${d.weekdayPT}</div>
+        </td>
+        <td class="real-cell">
+          ${d.real === null ? '-' : formatNumberPt(d.real)}
+        </td>
+        <td class="previsao-cell">
+          ${formatNumberPt(d.demandaPrevista)}
+        </td>
+        <td class="media-cell">
+          ${d.mediaDiaSemana === null ? '-' : formatNumberPt(d.mediaDiaSemana)}
+        </td>
+        <td class="mediana-cell">
+          ${d.medianaDiaSemana === null ? '-' : formatNumberPt(d.medianaDiaSemana)}
+        </td>
+        <td class="erro-cell">
+          ${d.erroAbs === null ? '-' : formatNumberPt(d.erroAbs)}
+        </td>
+      </tr>
+    `).join('');
+  }
+  
+  // Dimensionamento Table - CORRIGIDA E ORGANIZADA
+  const tbodyDim = document.getElementById('forecastTableDim');
+  if (tbodyDim) {
+    tbodyDim.innerHTML = data.map(d => `
+      <tr>
+        <td class="date-cell">
+          <div class="date">${d.dataDMY}</div>
+          <div class="weekday">${d.weekdayPT}</div>
+        </td>
+        <td class="atendentes-cell">
+        ${formatNumberPt(d.atendentes)}
+        </td>
+        <td class="demanda-cell">
+        ${formatNumberPt(d.demandaPrevista)}
+        </td>
+        <td class="produtividade-cell">
+        ${d.produtividade ? d.produtividade + '/h' : '-'}
+        </td>
+        <td class="real-dim-cell ${d.real === null ? 'pendente' : ''}">
+          <div class="cell-with-icon">
+            <i class="fas ${d.real === null ? 'fa-clock' : 'fa-check-circle'}" 
+               style="color: ${d.real === null ? '#94a3b8' : '#10b981'}"></i>
+            ${d.real === null ? 'Pendente' : formatNumberPt(d.real)}
+          </div>
+        </td>
+      </tr>
+    `).join('');
+  }
+  
+  // Mostrar/esconder tabelas baseado no modo atual
+  const perfTable = document.getElementById('tablePerformance');
+  const dimTable = document.getElementById('tableDimensionamento');
+  
+  if (perfTable && dimTable) {
+    if (currentViewMode === 'performance') {
+      perfTable.style.display = 'block';
+      dimTable.style.display = 'none';
+    } else {
+      perfTable.style.display = 'none';
+      dimTable.style.display = 'block';
+    }
+  }
+}
+
+// -------------------------
+// Exportações (CSV / PDF)
+// -------------------------
+function getCurrentContext() {
+  const unitEl = document.getElementById('forecastUnit');
+  const horizonEl = document.getElementById('forecastHorizon');
+  const selectedUnit = unitEl?.value || 'unidade';
+  const horizonValue = parseInt(horizonEl?.value || '30', 10);
+  return { selectedUnit, horizonValue };
+}
+
+function buildCsvFromRows(rows, mode = currentViewMode) {
+  let header, lines;
+  
+  if (mode === 'performance') {
+    header = ['Data', 'Dia Semana', 'Atendentes_Necessarios', 'Demanda_Prevista', 'Produtividade_Ref', 'Real'];
+    for (const r of (rows || [])) {
+      const line = [
+        r.dataDMY,
+        r.weekdayPT,
+        (r.atendentes ?? ''),
+        (r.demandaPrevista ?? ''),
+        (r.produtividade ?? ''),
+        (r.real ?? '')
+        ].join(';');
+      lines.push(line);
+    }
+  } else {
+    header = ['Data', 'Dia Semana', 'Atendentes_Necessarios', 'Demanda_Prevista', 'Modelo', 'Produtividade_Ref', 'Real'];
+    lines = [header.join(';')];
+    for (const r of (rows || [])) {
+      const line = [
+        r.dataDMY,
+        r.weekdayPT,
+        (r.atendentes ?? ''),
+        (r.demandaPrevista ?? ''),
+        (r.modelo ?? ''),
+        (r.produtividade ?? ''),
+        (r.real ?? '')
+      ].join(';');
+      lines.push(line);
+    }
+  }
+  
+  return '\ufeff' + lines.join('\n');
+}
+
+function downloadBlob(filename, content, mime) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function downloadCurrentCSV() {
+  const { selectedUnit, horizonValue } = getCurrentContext();
+  const viewMode = currentViewMode === 'performance' ? 'performance' : 'dimensionamento';
+  const fname = `previsao_${sanitizeFilename(selectedUnit)}_${viewMode}_${horizonValue}dias.csv`;
+  const csv = buildCsvFromRows(currentFilteredRows);
+  downloadBlob(fname, csv, 'text/csv;charset=utf-8;');
+}
+
+function downloadCurrentPDF() {
+  const jsPDF = window.jspdf?.jsPDF;
+  if (!jsPDF) {
+    alert('Não foi possível gerar o PDF (jsPDF não carregou).');
+    return;
+  }
+
+  const { selectedUnit, horizonValue } = getCurrentContext();
+  const viewMode = currentViewMode === 'performance' ? 'Performance' : 'Dimensionamento';
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+  const marginLeft = 40;
+  doc.setFontSize(14);
+  doc.text(`BRISA - Detalhamento de ${viewMode}`, marginLeft, 40);
+  doc.setFontSize(10);
+  doc.text(`Unidade: ${selectedUnit}   |   Horizonte: ${horizonValue} dias`, marginLeft, 60);
+
+  let head, body;
+  
+  if (currentViewMode === 'performance') {
+    head = [['Data', 'Dia Semana', 'Real', 'Previsão', 'Média (dia)', 'Mediana (dia)', 'Erro Absoluto']];
+    body = (currentFilteredRows || []).map(r => ([
+      r.dataDMY,
+      r.weekdayPT,
+      formatNumberPt(r.real),
+      formatNumberPt(r.demandaPrevista),
+      formatNumberPt(r.mediaDiaSemana),
+      formatNumberPt(r.medianaDiaSemana),
+      formatNumberPt(r.erroAbs)
+    ]));
+  } else {
+    head = [['Data', 'Dia Semana', 'Atendentes', 'Demanda Prevista', 'Modelo', 'Produtividade/h', 'Real']];
+    body = (currentFilteredRows || []).map(r => ([
+      r.dataDMY,
+      r.weekdayPT,
+      formatNumberPt(r.atendentes),
+      formatNumberPt(r.demandaPrevista),
+      r.modelo || '',
+      r.produtividade ? r.produtividade + '/h' : '',
+      formatNumberPt(r.real)
+    ]));
+  }
+
+  if (typeof doc.autoTable !== 'function') {
+    alert('Não foi possível gerar o PDF (autoTable não carregou).');
+    return;
+  }
+
+  doc.autoTable({
+    head,
+    body,
+    startY: 80,
+    styles: { fontSize: 9, cellPadding: 4 },
+    headStyles: { fillColor: [15, 23, 42] },
+    alternateRowStyles: { fillColor: [248, 250, 252] }
+  });
+
+  const fname = `previsao_${sanitizeFilename(selectedUnit)}_${currentViewMode}_${horizonValue}dias.pdf`;
+  doc.save(fname);
+}
+
+function initDownloadButtons() {
+  const btnCsv = document.getElementById('btnDownloadCSV');
+  const btnPdf = document.getElementById('btnDownloadPDF');
+  if (btnCsv) btnCsv.addEventListener('click', downloadCurrentCSV);
+  if (btnPdf) btnPdf.addEventListener('click', downloadCurrentPDF);
+}
+
+// -------------------------
+// Gráfico
+// -------------------------
+function renderizarGrafico(dados) {
+  const canvas = document.getElementById('forecastChartCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  if (forecastChart) forecastChart.destroy();
+
+  const labels = dados.map(d => d.dataDMY);
+
+  // Carregar preferências
+  const prefs = loadSeriesPrefs();
+
+  const dsPrevisto = {
+    seriesKey: 'previsto',
+    label: 'Previsto',
+    data: dados.map(d => d.demandaPrevista),
+    borderColor: '#6366f1',
+    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    fill: true,
+    tension: 0.35,
+    borderWidth: 3,
+    pointRadius: 3,
+    pointHoverRadius: 6,
+    hidden: !prefs.previsto
+  };
+
+  const dsReal = {
+    seriesKey: 'real',
+    label: 'Real',
+    data: dados.map(d => d.real),
+    borderColor: '#10b981',
+    backgroundColor: 'transparent',
+    fill: false,
+    tension: 0.15,
+    borderWidth: 2,
+    borderDash: [5, 5],
+    pointRadius: 3,
+    pointHoverRadius: 6,
+    hidden: !prefs.real
+  };
+
+  const dsMedia = {
+    seriesKey: 'media',
+    label: 'Média (dia)',
+    data: dados.map(d => d.mediaDiaSemana),
+    borderColor: '#0ea5e9',
+    backgroundColor: 'transparent',
+    fill: false,
+    tension: 0,
+    borderWidth: 2,
+    pointRadius: 0,
+    hidden: !prefs.media
+  };
+
+  const dsMediana = {
+    seriesKey: 'mediana',
+    label: 'Mediana (dia)',
+    data: dados.map(d => d.medianaDiaSemana),
+    borderColor: '#f59e0b',
+    backgroundColor: 'transparent',
+    fill: false,
+    tension: 0,
+    borderWidth: 2,
+    pointRadius: 0,
+    hidden: !prefs.mediana
+  };
+
+  forecastChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [dsPrevisto, dsReal, dsMedia, dsMediana]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          display: false,
+        },
+        tooltip: {
+          backgroundColor: '#1e293b',
+          padding: 12,
+          cornerRadius: 8,
+          titleFont: { size: 14 },
+          callbacks: {
+            label: function(context) {
+              let label = context.dataset.label || '';
+              if (label) label += ': ';
+              label += formatNumberPt(context.parsed.y);
+              return label;
+            }
+          }
+        }
+      },
+      scales: {
+        y: { 
+          beginAtZero: true, 
+          grid: { color: '#f1f5f9' },
+          ticks: {
+            callback: function(value) {
+              return value.toLocaleString('pt-BR');
+            }
+          }
+        },
+        x: { 
+          grid: { display: false },
+          ticks: {
+            maxRotation: 45
+          }
+        }
+      }
+    }
+  });
+}
+
+// -------------------------
+// Inicialização
+// -------------------------
+document.addEventListener('DOMContentLoaded', () => {
+  initDownloadButtons();
+  carregarDados();
+});
+    </script>
+</body>
+</html>
