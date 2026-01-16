@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Métricas de Performance</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../style.css">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    
+    <style>
+        /* ---------- CONTROLES PADRONIZADOS ---------- */
+        .controls {
+            display: flex;
+            align-items: center;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .control-group label {
+            font-weight: 600;
+            color: #0f172a;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* ---------- SELECT2 CENTRALIZADO ---------- */
+        .select2-container .select2-selection--single {
+            height: 42px !important;
+            display: flex;
+            align-items: center;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .select2-container--default 
+        .select2-selection--single 
+        .select2-selection__rendered {
+            line-height: 42px !important;
+            padding-left: 12px;
+            color: #0f172a;
+            font-weight: 500;
+        }
+
+        .select2-container--default 
+        .select2-selection--single 
+        .select2-selection__arrow {
+            height: 42px !important;
+        }
+
+        /* ---------- KPIs ---------- */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .kpi-item {
+            padding: 20px;
+            text-align: center;
+            border-top: 4px solid #3b82f6;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .kpi-label {
+            font-size: 0.75rem;
+            color: #64748b;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .kpi-value {
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: #1e293b;
+        }
+
+        /* ---------- CARDS E GRÁFICOS ---------- */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        /* Novo estilo para garantir largura total no gráfico inferior */
+        .full-width-chart {
+            margin-top: 20px;
+            width: 100%;
+        }
+
+        .best-model-card {
+            margin-bottom: 20px; 
+            border-left: 5px solid #6366f1;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            padding: 20px;
+            background: #fff;
+            border-radius: 8px;
+        }
+
+        .model-icon {
+            background: #eef2ff;
+            padding: 15px;
+            border-radius: 50%;
+            color: #6366f1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 60px;
+            height: 60px;
+        }
+
+        @media (max-width: 1024px) {
+            .charts-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="layout">
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">
+                <img src="../equatorial.png" alt="Equatorial Energia">
+            </div>
+            <button class="toggle-btn" onclick="toggleSidebar()">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+
+        <nav class="nav-menu">
+            <a href="../section_previsao/previsao.html" class="nav-link">
+                <i class="fas fa-bolt"></i><span>Previsão Futura</span>
+            </a>
+            <a href="metricas.html" class="nav-link active">
+                <i class="fas fa-percent"></i><span>Métricas</span>
+            </a>
+            <a href="../section_retreino/retreino.html" class="nav-link">
+                <i class="fas fa-sync-alt"></i><span>Retreinamento</span>
+            </a>
+            <a href="../section_servicos/servicos.html" class="nav-link">
+                <i class="fas fa-users"></i><span>Serviços</span>
+            </a>
+        </nav>
+    </aside>
+
+    <main class="content">
+        <header>
+            <h1>Performance do Modelo</h1>
+            <p>Métricas de erro baseadas no arquivo resumo_modelos_vencedores.csv</p>
+        </header>
+
+        <section class="card controls">
+            <div class="control-group">
+                <label>
+                    <i class="fas fa-map-marker-alt"></i> Selecionar Unidade para Análise
+                </label>
+                <select id="unitMetrics" class="searchable-select">
+                    <option value="">Selecione uma unidade...</option>
+                </select>
+            </div>
+        </section>
+
+        <!-- <section id="healthCard" class="card" style="margin-bottom: 20px; border-left: 5px solid #ccc; display: flex; align-items: center; gap: 20px; padding: 20px;">
+            <div id="healthIcon" style="font-size: 2rem;">
+                <i class="fas fa-info-circle"></i>
+            </div>
+            <div>
+                <h3 style="margin: 0; font-size: 0.8rem; color: #64748b; text-transform: uppercase;">Status de Performance</h3>
+                <div id="healthStatus" style="font-size: 1.4rem; font-weight: 800;">Analisando...</div>
+                <p id="healthReason" style="margin: 5px 0 0 0; font-size: 0.85rem; color: #475569; line-height: 1.4;"></p>
+            </div>
+        </section> -->
+
+        <section class="card best-model-card">
+            <div class="model-icon">
+                <i class="fas fa-robot fa-2xl"></i>
+            </div>
+            <div>
+                <h3 style="margin: 0; font-size: 0.8rem; color: #64748b; text-transform: uppercase;">
+                    Algoritmo Recomendado
+                </h3>
+                <div id="bestModelName" style="font-size: 1.6rem; font-weight: 800;">
+                    Carregando...
+                </div>
+            </div>
+        </section>
+
+        <div class="kpi-grid">
+            <div class="card kpi-item kpi-mae">
+                <div class="kpi-label">MAE</div>
+                <div id="kpiMAE" class="kpi-value">–</div>
+            </div>
+            <div class="card kpi-item kpi-mape">
+                <div class="kpi-label">MAPE</div>
+                <div id="kpiMAPE" class="kpi-value">–</div>
+            </div>
+            <div class="card kpi-item kpi-rmse">
+                <div class="kpi-label">RMSE</div>
+                <div id="kpiRMSE" class="kpi-value">–</div>
+            </div>
+            <div class="card kpi-item kpi-r2">
+                <div class="kpi-label">R²</div>
+                <div id="kpiR2" class="kpi-value">–</div>
+            </div>
+        </div>
+
+        <div class="charts-grid">
+            <section class="card">
+                <h3> Equilíbrio de Erro</h3>
+                <div class="chart-container" style="height:350px">
+                    <canvas id="radarChart"></canvas>
+                </div>
+            </section>
+
+            <section class="card">
+                <h3> Comparativo de Escala</h3>
+                <div class="chart-container" style="height:350px">
+                    <canvas id="barChartMetrics"></canvas>
+                </div>
+            </section>
+        </div> <section class="card full-width-chart">
+            <h3>
+                <i class="fas fa-layer-group"></i>
+                Importância das Features Utilizadas no Modelo
+            </h3>
+
+            <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 10px;">
+                Todas as variáveis de engenharia de features consideradas no projeto.
+                As maiores importâncias indicam maior contribuição para a previsão.
+            </p>
+
+            <div class="chart-container" style="height: 600px; width: 100%;">
+                <canvas id="featureImportanceChart"></canvas>
+            </div>
+        </section>
+    </main>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+<script src="script-metricas.js"></script>
+
+</body>
+</html>
