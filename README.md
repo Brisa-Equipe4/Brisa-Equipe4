@@ -48,6 +48,7 @@ Para garantir a melhor assertividade, testamos e implementamos diversos algoritm
 * Prophet (Séries Temporais)
 * Redes Neurais (Neural Networks)
 * Regressão Linear
+* ExtraTress
 
 ### 📉 Métricas de Avaliação
 A performance dos modelos foi validada utilizando as seguintes métricas:
