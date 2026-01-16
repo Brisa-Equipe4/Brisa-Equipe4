@@ -25,7 +25,7 @@
 
 ## 📄 Sobre o Projeto
 
-Este projeto foi desenvolvido ao longo de seis meses de imersão durante a **Residência em TIC16**, com o objetivo de fomentar a inovação e criar sistemas eficientes para o setor energético.
+Este projeto foi desenvolvido ao longo de seis meses de imersão durante a **Residência em TIC16**, com o objetivo de fomentar a inovação e criar sistemas eficientes para o setor tecnológico.
 
 O foco principal foi o desenvolvimento de um mecanismo de **Inteligência Artificial (IA)** capaz de predizer demandas quantitativas para um conjunto de **69 unidades** filiadas à empresa **EQTLab**. O sistema visa otimizar o planejamento e a alocação de recursos baseando-se em dados históricos e preditivos.
 
